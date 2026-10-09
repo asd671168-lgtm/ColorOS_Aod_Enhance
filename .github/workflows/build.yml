@@ -35,22 +35,27 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        id: gradle_build
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace > build.log 2>&1
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          GRADLE_EXIT=${PIPESTATUS[0]}
+          if [ $GRADLE_EXIT -ne 0 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -B build-logs
+            git add -f build.log
+            git commit -m "build log [skip ci]" || true
+            git push -f origin build-logs || true
+            exit $GRADLE_EXIT
+          fi
 
-      - name: Push Build Log to branch
-        if: always()
+      - name: List Generated APKs
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B build-logs
-          git add -f build.log
-          git commit -m "build log [skip ci]" || true
-          git push -f origin build-logs || true
+          echo "### Generated APK Files" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          find app/build/outputs/apk -type f -name "*.apk" | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Debug APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ColorOS_Aod_Enhance_v1.6_Debug
