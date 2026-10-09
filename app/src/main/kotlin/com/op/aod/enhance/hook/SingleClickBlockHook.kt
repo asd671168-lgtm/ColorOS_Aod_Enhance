@@ -88,16 +88,22 @@ internal object SingleClickBlockHook {
                 }.getOrNull() ?: return@before
 
                 val sAodData = runCatching {
-                    aodDataClass.resolve().firstField { name = "sAodData" }.get(null)
+                    val f = aodDataClass.getDeclaredField("sAodData")
+                    f.isAccessible = true
+                    f.get(null)
                 }.getOrNull() ?: return@before
 
                 val isAodEnable = runCatching {
-                    sAodData.javaClass.resolve().firstMethod { name = "isAodEnable" }.invoke(sAodData) as? Boolean
+                    val m = sAodData.javaClass.getDeclaredMethod("isAodEnable")
+                    m.isAccessible = true
+                    m.invoke(sAodData) as? Boolean
                 }.getOrNull() ?: false
                 if (!isAodEnable) return@before
 
                 val isPanoramicAod = runCatching {
-                    sAodData.javaClass.resolve().firstMethod { name = "isPanoramicAod" }.invoke(sAodData) as? Boolean
+                    val m = sAodData.javaClass.getDeclaredMethod("isPanoramicAod")
+                    m.isAccessible = true
+                    m.invoke(sAodData) as? Boolean
                 }.getOrNull() ?: false
                 if (!isPanoramicAod) return@before
 
@@ -109,7 +115,9 @@ internal object SingleClickBlockHook {
 
                 // 维持 AOD 状态活跃，避免息屏组件异常休眠
                 val mAodIsInShow = runCatching {
-                    sAodData.javaClass.resolve().firstField { name = "mAodIsInShow" }.get(sAodData) as? Boolean
+                    val f = sAodData.javaClass.getDeclaredField("mAodIsInShow")
+                    f.isAccessible = true
+                    f.getBoolean(sAodData)
                 }.getOrNull() ?: false
 
                 if (mAodIsInShow) {
@@ -117,17 +125,21 @@ internal object SingleClickBlockHook {
                         "com.oplus.systemui.aod.display.OplusWakeUpController".toClass(appClassLoader)
                     }.getOrNull()
                     val ctrlInstance = runCatching {
-                        wakeUpCtrlCls?.resolve()?.firstField { name = "instance" }?.get(null)
+                        val f = wakeUpCtrlCls?.getDeclaredField("instance")
+                        f?.isAccessible = true
+                        f?.get(null)
                     }.getOrNull()
                     if (ctrlInstance != null) {
                         val isUpsideDown = runCatching {
-                            ctrlInstance.javaClass.resolve().firstField { name = "isUpsideDown" }.get(ctrlInstance) as? Boolean
+                            val f = ctrlInstance.javaClass.getDeclaredField("isUpsideDown")
+                            f.isAccessible = true
+                            f.getBoolean(ctrlInstance)
                         }.getOrNull() ?: false
                         if (!isUpsideDown) {
                             runCatching {
-                                ctrlInstance.javaClass.resolve().firstMethod {
-                                    name = "notifyWakeUpCallback"
-                                }.invoke(ctrlInstance, 1)
+                                val m = ctrlInstance.javaClass.getDeclaredMethod("notifyWakeUpCallback", Int::class.javaPrimitiveType)
+                                m.isAccessible = true
+                                m.invoke(ctrlInstance, 1)
                             }
                         }
                     }
@@ -179,7 +191,7 @@ internal object SingleClickBlockHook {
         )
         for (targetClass in classes) {
             val cls = runCatching { targetClass.toClass(appClassLoader) }.getOrNull() ?: continue
-            val methods = arrayOf("processPanoramicWakeup", "-$$Nest$mprocessPanoramicWakeup")
+            val methods = arrayOf("processPanoramicWakeup", "-${'$'}Nest${'$'}mprocessPanoramicWakeup")
             for (mName in methods) {
                 runCatching {
                     cls.resolve().firstMethod { name = mName }
