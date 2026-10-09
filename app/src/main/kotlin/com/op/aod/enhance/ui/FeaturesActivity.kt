@@ -70,7 +70,7 @@ private fun FeaturesScreen(
             IconHideUtil.isIconHidden(
                 packageManager = context.packageManager,
                 packageName = context.packageName,
-                mainActivityClass = MainActivity::class.java.name
+                mainActivityClass = "${context.packageName}.ui.LauncherAlias"
             ) || initial.hideIcon
         )
     }
@@ -108,7 +108,7 @@ private fun FeaturesScreen(
                 IconHideUtil.setIconHidden(
                     packageManager = context.packageManager,
                     packageName = context.packageName,
-                    mainActivityClass = MainActivity::class.java.name,
+                    mainActivityClass = "${context.packageName}.ui.LauncherAlias",
                     hidden = iconHidden
                 )
             }

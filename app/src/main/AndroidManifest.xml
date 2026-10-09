@@ -13,11 +13,17 @@
             android:name=".ui.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout"
             android:exported="true">
+        </activity>
+
+        <activity-alias
+            android:name=".ui.LauncherAlias"
+            android:targetActivity=".ui.MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <activity
             android:name=".ui.BrightnessActivity"
@@ -38,6 +44,9 @@
         <meta-data
             android:name="xposedmodule"
             android:value="true" />
+        <meta-data
+            android:name="xposedsettings"
+            android:value="com.op.aod.enhance.ui.MainActivity" />
         <meta-data
             android:name="xposeddescription"
             android:value="@string/xposed_description" />
