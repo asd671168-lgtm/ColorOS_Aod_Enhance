@@ -63,6 +63,19 @@ internal object SingleClickBlockHook {
         "com.oplus.systemui.aod.touch.AodTouchController\$SingleTapListener",
     )
 
+    // 路径 C：BTMLL (别他妈亮了) 验证有效的高层控制器直接拦截
+    private val BTMLL_NOTIFY_TARGETS = arrayOf(
+        "com.oplus.systemui.aod.display.OplusWakeUpController",
+        "com.oplus.systemui.aod.scene.PanoramicAodSingleClickWakeUpController",
+        "com.oplus.systemui.aod.scene.AodSingleClickWakeUpController",
+        "com.oplus.systemui.notification.interruption.wakeup.WakeupScreenHelper"
+    )
+
+    private val BTMLL_PROCESS_TARGETS = arrayOf(
+        "com.oplus.systemui.keyguard.gesture.OplusDoubleClickSleep",
+        "com.oplus.systemui.aod.gesture.OplusDoubleClickSleep"
+    )
+
     fun YukiBaseHooker.hookSingleClickWakeUpBlock() {
         if (!AodConfigReader.read(MainHook.hostAppContext).blockSingleClick) {
             if (BuildConfig.DEBUG) Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: disabled by config")
@@ -76,6 +89,9 @@ internal object SingleClickBlockHook {
 
         // 路径 B：遍历所有候选双击监听器类
         hookDoubleClickSleepSingleTap()
+
+        // 路径 C：BTMLL 同款高层 Controller 拦截
+        hookBtmllTargets()
     }
 
     /**
@@ -161,6 +177,46 @@ internal object SingleClickBlockHook {
         }.onFailure {
             if (BuildConfig.DEBUG) {
                 Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: $label not available (${it.javaClass.simpleName})")
+            }
+        }
+    }
+
+    /**
+     * 路径 C：直接拦截 BTMLL (别他妈亮了) 验证过的核心唤醒方法。
+     * 直接丢弃 notifyWakeUpCallback 和 processPanoramicWakeup。
+     */
+    private fun YukiBaseHooker.hookBtmllTargets() {
+        for (targetClass in BTMLL_NOTIFY_TARGETS) {
+            runCatching {
+                targetClass.toClass(appClassLoader).resolve()
+                    .firstMethod { name = "notifyWakeUpCallback" }
+                    .hook {
+                        before {
+                            if (AodConfigReader.read(MainHook.hostAppContext).blockSingleClick) {
+                                result = null
+                                if (BuildConfig.DEBUG) Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: Blocked notifyWakeUpCallback in $targetClass")
+                            }
+                        }
+                    }
+            }.onFailure {
+                if (BuildConfig.DEBUG) Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: notifyWakeUpCallback not found in $targetClass")
+            }
+        }
+
+        for (targetClass in BTMLL_PROCESS_TARGETS) {
+            runCatching {
+                targetClass.toClass(appClassLoader).resolve()
+                    .firstMethod { name = "processPanoramicWakeup" }
+                    .hook {
+                        before {
+                            if (AodConfigReader.read(MainHook.hostAppContext).blockSingleClick) {
+                                result = null
+                                if (BuildConfig.DEBUG) Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: Blocked processPanoramicWakeup in $targetClass")
+                            }
+                        }
+                    }
+            }.onFailure {
+                if (BuildConfig.DEBUG) Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: processPanoramicWakeup not found in $targetClass")
             }
         }
     }
