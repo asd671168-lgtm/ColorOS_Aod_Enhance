@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -34,13 +33,6 @@ import androidx.compose.ui.unit.sp
 
 /**
  * 液态玻璃风格滑块组
- *
- * @param label 标题说明
- * @param value 当前浮点数值
- * @param onValueChange 数值变更
- * @param valueRange 取值范围
- * @param steps 步长划分段数
- * @param valueDisplay 格式化显示文本
  */
 @Composable
 fun GlassSliderRow(
@@ -68,7 +60,6 @@ fun GlassSliderRow(
                 fontWeight = FontWeight.Medium
             )
 
-            // 液态发光数值 Pill 标签
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
@@ -93,7 +84,6 @@ fun GlassSliderRow(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 发光渐变滑块
         Slider(
             value = value,
             onValueChange = onValueChange,
@@ -146,8 +136,8 @@ fun GlassInputField(
                             Color.White.copy(alpha = 0.25f),
                             Color.White.copy(alpha = 0.05f)
                         ),
-                        start = Offset(0f, 0f),
-                        end = Offset(Float.MAX_VALUE, Float.MAX_VALUE)
+                        start = Offset.Zero,
+                        end = Offset.Infinite
                     ),
                     shape = shape
                 )

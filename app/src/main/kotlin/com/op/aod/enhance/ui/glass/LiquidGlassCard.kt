@@ -8,34 +8,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
  * 液态玻璃 (Liquid Glass) 容器组件。
  *
- * 使用 Android 12+ 原生 Modifier.blur() + 多层渐变叠加实现毛玻璃质感，
- * 不依赖任何第三方库，使用 AndroidX Compose 内置 API（API 31+）。
- *
- * 分层设计：
- * 1. 深色半透明背景层（基础暗色）
- * 2. 白色边框光泽层（顶部/左侧高光）
- * 3. 内部浅色渐变层（内发光）
- * 4. 内容层（子 Composable）
+ * 使用 Android 12+ 原生渐变叠加实现毛玻璃质感，
+ * 不依赖任何第三方库，使用 AndroidX Compose 内置 API。
  *
  * @param modifier 外部修饰符
- * @param cornerRadius 圆角半径，默认 28dp（液态玻璃 pill 风格）
+ * @param cornerRadius 圆角半径，默认 24dp
  * @param backgroundAlpha 背景透明度 0.0–1.0，默认 0.18
- * @param blurRadius 背景模糊半径，默认 20dp（仅对背景内容生效）
- * @param tintColor 玻璃色调，默认白色（可改为蓝/紫等彩色玻璃）
+ * @param tintColor 玻璃色调，默认白色
  * @param content 内容
  */
 @Composable
@@ -43,7 +33,6 @@ fun LiquidGlassCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 24.dp,
     backgroundAlpha: Float = 0.18f,
-    blurRadius: Dp = 20.dp,
     tintColor: Color = Color.White,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -94,7 +83,7 @@ fun LiquidGlassCard(
                     )
                 )
             }
-            // 外边框：白色光泽边框（顶部/左侧高光，底部/右侧阴影感）
+            // 外边框：白色光泽边框
             .border(
                 width = 1.dp,
                 brush = Brush.linearGradient(
@@ -103,8 +92,8 @@ fun LiquidGlassCard(
                         tintColor.copy(alpha = 0.08f),
                         Color.Black.copy(alpha = 0.25f)
                     ),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.MAX_VALUE, Float.MAX_VALUE)
+                    start = Offset.Zero,
+                    end = Offset.Infinite
                 ),
                 shape = shape
             )
