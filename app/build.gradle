@@ -90,15 +90,6 @@ android {
 
     }
 
-    splits {
-        abi {
-            enable = true
-            reset()
-            include 'arm64-v8a', 'armeabi-v7a'
-            universalApk = true
-        }
-    }
-
     buildFeatures {
         buildConfig = true
         compose = true
@@ -120,9 +111,6 @@ dependencies {
     implementation libs.androidx.compose.ui
     implementation libs.androidx.compose.material3
     implementation libs.androidx.compose.foundation
-    implementation libs.miuix.ui
-    implementation libs.miuix.preference
-    implementation libs.miuix.icons
     debugImplementation libs.androidx.compose.ui.tooling
     debugImplementation libs.androidx.compose.ui.test.manifest
 
