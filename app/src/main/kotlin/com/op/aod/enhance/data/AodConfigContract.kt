@@ -36,7 +36,7 @@ object AodConfigContract {
     const val DEFAULT_RUNNING_MULTIPLIER = 1.6f
     const val DEFAULT_ENABLE_PANORAMIC = true
     const val DEFAULT_ENABLE_SETTINGS_SUPPORT = true
-    const val DEFAULT_BLOCK_SINGLE_CLICK = false
+    const val DEFAULT_BLOCK_SINGLE_CLICK = true
     const val DEFAULT_BLOCK_LOW_LIGHT_HIDE = true
     const val DEFAULT_HIDE_ICON = false
 
