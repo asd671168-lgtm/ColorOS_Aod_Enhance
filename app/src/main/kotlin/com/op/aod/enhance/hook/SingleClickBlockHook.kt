@@ -8,11 +8,10 @@ import com.op.aod.enhance.BuildConfig
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * AOD 单击唤醒屏蔽 Hook。
+ * AOD 单击唤醒屏蔽 Hook（安全模式）。
  *
- * 结合并集成"别他妈亮了"（BTMLL）实测有效的多层拦截机制 + 传统 AOD 回调过滤，
- * 彻底解决 ColorOS 14/15/16/17 在全景息屏、锁屏岛以及常规息屏下的单击误触亮屏问题，
- * 同时 100% 确保双击唤醒正常可用。
+ * 专注拦截手势单次点击分发与回调，绝不拦截全局电源/亮屏入口（如 powerOnScreen），
+ * 确保电源键点亮、双击亮屏、指纹解锁 100% 正常，杜绝黑屏问题。
  */
 internal object SingleClickBlockHook {
 
@@ -46,143 +45,21 @@ internal object SingleClickBlockHook {
             return
         }
 
-        // 1. 集成 BTMLL 核心逻辑：拦截 WakeupScreenHelper.powerOnScreen
-        hookWakeupScreenHelperPowerOn()
-
-        // 2. 集成 BTMLL 核心逻辑：拦截 PanoramicAod 监控注册
-        hookPanoramicAodMonitors()
-
-        // 3. 集成 BTMLL 核心逻辑：拦截 OplusDoubleClickSleep 全景唤醒处理
-        hookDoubleClickSleepProcessWakeup()
-
-        // 4. 拦截 onSingleTapConfirmed
+        // 1. 拦截手势单次点击确认回调（GestureDetector 确认是单击而非双击时调用）
         hookDoubleClickSleepSingleTap()
 
-        // 5. 补充拦截：常规 AOD 的 onClick 路径（带双击阈值判定）
+        // 2. 拦截全景息屏点击分发处理（只拦截 processPanoramicWakeup，不触碰双击/电源键）
+        hookDoubleClickSleepProcessWakeup()
+
+        // 3. 常规 AOD 的 onClick 路径（带 350ms 双击计时判定放行）
         for ((cls, label) in CLICK_TARGETS) {
             registerClickHook(cls, label)
         }
     }
 
     /**
-     * BTMLL 核心防线 1：拦截 WakeupScreenHelper.powerOnScreen()。
-     *
-     * 在 ColorOS 14/15/16/17 全景息屏下，任何触摸引发的亮屏操作最终均调用此方法唤醒屏幕。
-     * 当处于 AOD 息屏状态时直接拦截该调用（result = null），使屏幕保持息屏；
-     * 同时若 AOD 正在显示，通知 OplusWakeUpController 保持 AOD 状态活性。
-     */
-    private fun YukiBaseHooker.hookWakeupScreenHelperPowerOn() {
-        val helperClass = runCatching {
-            "com.oplus.systemui.notification.interruption.wakeup.WakeupScreenHelper".toClass(appClassLoader)
-        }.getOrNull() ?: return
-
-        runCatching {
-            helperClass.resolve().firstMethod { name = "powerOnScreen" }
-        }.getOrNull()?.hook {
-            before {
-                val cfg = AodConfigReader.read(MainHook.hostAppContext)
-                if (!cfg.blockSingleClick) return@before
-
-                val aodDataClass = runCatching {
-                    "com.oplus.systemui.aod.aodclock.constant.AodData".toClass(appClassLoader)
-                }.getOrNull() ?: return@before
-
-                val sAodData = runCatching {
-                    val f = aodDataClass.getDeclaredField("sAodData")
-                    f.isAccessible = true
-                    f.get(null)
-                }.getOrNull() ?: return@before
-
-                val isAodEnable = runCatching {
-                    val m = sAodData.javaClass.getDeclaredMethod("isAodEnable")
-                    m.isAccessible = true
-                    m.invoke(sAodData) as? Boolean
-                }.getOrNull() ?: false
-                if (!isAodEnable) return@before
-
-                val isPanoramicAod = runCatching {
-                    val m = sAodData.javaClass.getDeclaredMethod("isPanoramicAod")
-                    m.isAccessible = true
-                    m.invoke(sAodData) as? Boolean
-                }.getOrNull() ?: false
-                if (!isPanoramicAod) return@before
-
-                // 核心拦截点：阻止亮屏
-                result = null
-                if (BuildConfig.DEBUG) {
-                    Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: WakeupScreenHelper.powerOnScreen blocked")
-                }
-
-                // 维持 AOD 状态活跃，避免息屏组件异常休眠
-                val mAodIsInShow = runCatching {
-                    val f = sAodData.javaClass.getDeclaredField("mAodIsInShow")
-                    f.isAccessible = true
-                    f.getBoolean(sAodData)
-                }.getOrNull() ?: false
-
-                if (mAodIsInShow) {
-                    val wakeUpCtrlCls = runCatching {
-                        "com.oplus.systemui.aod.display.OplusWakeUpController".toClass(appClassLoader)
-                    }.getOrNull()
-                    val ctrlInstance = runCatching {
-                        val f = wakeUpCtrlCls?.getDeclaredField("instance")
-                        f?.isAccessible = true
-                        f?.get(null)
-                    }.getOrNull()
-                    if (ctrlInstance != null) {
-                        val isUpsideDown = runCatching {
-                            val f = ctrlInstance.javaClass.getDeclaredField("isUpsideDown")
-                            f.isAccessible = true
-                            f.getBoolean(ctrlInstance)
-                        }.getOrNull() ?: false
-                        if (!isUpsideDown) {
-                            runCatching {
-                                val m = ctrlInstance.javaClass.getDeclaredMethod("notifyWakeUpCallback", Int::class.javaPrimitiveType)
-                                m.isAccessible = true
-                                m.invoke(ctrlInstance, 1)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * BTMLL 核心防线 2：拦截全景手势监控器的注册。
-     */
-    private fun YukiBaseHooker.hookPanoramicAodMonitors() {
-        val gestureCtrlCls = runCatching {
-            "com.oplus.systemui.aod.scene.PanoramicAodGestureController".toClass(appClassLoader)
-        }.getOrNull() ?: return
-
-        // 拦截手势监控注册
-        runCatching {
-            gestureCtrlCls.resolve().firstMethod { name = "registerPanoramicAodGestureMonitor" }
-        }.getOrNull()?.hook {
-            before {
-                if (AodConfigReader.read(MainHook.hostAppContext).blockSingleClick) {
-                    result = null
-                    if (BuildConfig.DEBUG) Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: registerPanoramicAodGestureMonitor blocked")
-                }
-            }
-        }
-
-        // 拦截唤醒监控注册
-        runCatching {
-            gestureCtrlCls.resolve().firstMethod { name = "registerPanoramicAodWakeUpMonitor" }
-        }.getOrNull()?.hook {
-            before {
-                if (AodConfigReader.read(MainHook.hostAppContext).blockSingleClick) {
-                    result = null
-                    if (BuildConfig.DEBUG) Log.d("AOD_Enhance", "AOD_SINGLE_CLICK_BLOCK: registerPanoramicAodWakeUpMonitor blocked")
-                }
-            }
-        }
-    }
-
-    /**
-     * BTMLL 核心防线 3：拦截 OplusDoubleClickSleep 中的全景唤醒分发。
+     * 核心防线 1：拦截 OplusDoubleClickSleep 中的全景单击唤醒分发。
+     * 仅阻止 processPanoramicWakeup，不影响双击 onDoubleTap 或电源键。
      */
     private fun YukiBaseHooker.hookDoubleClickSleepProcessWakeup() {
         val classes = arrayOf(
@@ -208,7 +85,8 @@ internal object SingleClickBlockHook {
     }
 
     /**
-     * 路径 B：拦截双击手势监听器的 onSingleTapConfirmed 回调。
+     * 核心防线 2：拦截手势监听器的 onSingleTapConfirmed 回调。
+     * 返回 false 明确告知系统取消单击响应。
      */
     private fun YukiBaseHooker.hookDoubleClickSleepSingleTap() {
         for (listenerClass in DOUBLE_CLICK_LISTENERS) {
