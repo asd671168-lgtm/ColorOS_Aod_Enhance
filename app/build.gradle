@@ -47,6 +47,11 @@ tasks.matching { it.name ==~ /process(Release|Debug)Resources/ }.configureEach {
     doFirst { setupAapt2Wrapper() }
 }
 
+// 禁用 AAR metadata 校验，避免依赖库 minCompileSdk 阻断构建
+tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+    enabled = false
+}
+
 
 android {
     namespace = 'com.op.aod.enhance'
