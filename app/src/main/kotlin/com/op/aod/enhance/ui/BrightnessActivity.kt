@@ -43,21 +43,30 @@ class BrightnessActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            BrightnessScreen(
-                initial = AodConfigStore.read(contentResolver),
-                onSave = { cfg -> AodConfigStore.write(contentResolver, cfg) },
-                onBack = { finish() }
-            )
+            GlassScaffold(
+                title = "AOD 亮度设置",
+                onBackClick = { finish() }
+            ) { paddingValues ->
+                BrightnessContent(
+                    initial = AodConfigStore.read(contentResolver),
+                    onSave = { cfg -> AodConfigStore.write(contentResolver, cfg) },
+                    contentPadding = paddingValues
+                )
+            }
         }
     }
 }
 
+/**
+ * AOD 亮度调节可复用组件
+ */
 @OptIn(FlowPreview::class)
 @Composable
-private fun BrightnessScreen(
+internal fun BrightnessContent(
     initial: AodUiConfig,
     onSave: (AodUiConfig) -> Unit,
-    onBack: () -> Unit
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 ) {
     var initDark by remember { mutableFloatStateOf(initial.initDark.toFloat()) }
     var initBright by remember { mutableFloatStateOf(initial.initBright.toFloat()) }
@@ -82,109 +91,103 @@ private fun BrightnessScreen(
             }
     }
 
-    GlassScaffold(
-        title = "AOD 亮度设置",
-        onBackClick = onBack
-    ) { paddingValues: PaddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // 滑块调节卡片
-            item {
-                LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        GlassSliderRow(
-                            label = "熄屏前暗光环境 AOD 亮度",
-                            value = initDark,
-                            onValueChange = { initDark = it.coerceIn(0f, 255f) },
-                            valueRange = 0f..255f,
-                            steps = 254,
-                            valueDisplay = "${initDark.toInt()}"
-                        )
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // 滑块调节卡片
+        item {
+            LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    GlassSliderRow(
+                        label = "熄屏前暗光环境 AOD 亮度",
+                        value = initDark,
+                        onValueChange = { initDark = it.coerceIn(0f, 255f) },
+                        valueRange = 0f..255f,
+                        steps = 254,
+                        valueDisplay = "${initDark.toInt()}"
+                    )
 
-                        GlassDivider(modifier = Modifier.fillMaxWidth().height(1.dp))
+                    GlassDivider(modifier = Modifier.fillMaxWidth().height(1.dp))
 
-                        GlassSliderRow(
-                            label = "熄屏前亮光环境 AOD 亮度",
-                            value = initBright,
-                            onValueChange = { initBright = it.coerceIn(0f, 255f) },
-                            valueRange = 0f..255f,
-                            steps = 254,
-                            valueDisplay = "${initBright.toInt()}"
-                        )
+                    GlassSliderRow(
+                        label = "熄屏前亮光环境 AOD 亮度",
+                        value = initBright,
+                        onValueChange = { initBright = it.coerceIn(0f, 255f) },
+                        valueRange = 0f..255f,
+                        steps = 254,
+                        valueDisplay = "${initBright.toInt()}"
+                    )
 
-                        GlassDivider(modifier = Modifier.fillMaxWidth().height(1.dp))
+                    GlassDivider(modifier = Modifier.fillMaxWidth().height(1.dp))
 
-                        GlassSliderRow(
-                            label = "熄屏时 AOD 自动亮度倍率",
-                            value = runningMultiplier,
-                            onValueChange = {
-                                runningMultiplier = ((it * 10).toInt().coerceIn(10, 20) / 10f)
-                            },
-                            valueRange = 1.0f..2.0f,
-                            steps = 9,
-                            valueDisplay = "× $runningMultiplier"
-                        )
-                    }
+                    GlassSliderRow(
+                        label = "熄屏时 AOD 自动亮度倍率",
+                        value = runningMultiplier,
+                        onValueChange = {
+                            runningMultiplier = ((it * 10).toInt().coerceIn(10, 20) / 10f)
+                        },
+                        valueRange = 1.0f..2.0f,
+                        steps = 9,
+                        valueDisplay = "× $runningMultiplier"
+                    )
                 }
             }
+        }
 
-            // 精准数字输入卡片
-            item {
-                LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 10.dp)
-                    ) {
-                        Text(
-                            text = "精准数值设定",
-                            color = GlassTheme.TextPrimary,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                        )
+        // 精准数字输入卡片
+        item {
+            LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp)
+                ) {
+                    Text(
+                        text = "精准数值设定",
+                        color = GlassTheme.TextPrimary,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                    )
 
-                        GlassInputField(
-                            label = "暗光环境初始亮度 (0 ~ 255)",
-                            value = initDark.toInt().toString(),
-                            onValueChange = {
-                                it.toIntOrNull()?.let { v -> initDark = v.coerceIn(0, 255).toFloat() }
-                            }
-                        )
+                    GlassInputField(
+                        label = "暗光环境初始亮度 (0 ~ 255)",
+                        value = initDark.toInt().toString(),
+                        onValueChange = {
+                            it.toIntOrNull()?.let { v -> initDark = v.coerceIn(0, 255).toFloat() }
+                        }
+                    )
 
-                        GlassInputField(
-                            label = "亮光环境初始亮度 (0 ~ 255)",
-                            value = initBright.toInt().toString(),
-                            onValueChange = {
-                                it.toIntOrNull()?.let { v -> initBright = v.coerceIn(0, 255).toFloat() }
-                            }
-                        )
+                    GlassInputField(
+                        label = "亮光环境初始亮度 (0 ~ 255)",
+                        value = initBright.toInt().toString(),
+                        onValueChange = {
+                            it.toIntOrNull()?.let { v -> initBright = v.coerceIn(0, 255).toFloat() }
+                        }
+                    )
 
-                        GlassInputField(
-                            label = "运行亮度倍率 (1.0 ~ 2.0)",
-                            value = runningMultiplier.toString(),
-                            onValueChange = {
-                                it.toFloatOrNull()?.let { v -> runningMultiplier = v.coerceIn(1.0f, 2.0f) }
-                            }
-                        )
-                    }
+                    GlassInputField(
+                        label = "运行亮度倍率 (1.0 ~ 2.0)",
+                        value = runningMultiplier.toString(),
+                        onValueChange = {
+                            it.toFloatOrNull()?.let { v -> runningMultiplier = v.coerceIn(1.0f, 2.0f) }
+                        }
+                    )
                 }
             }
+        }
 
-            // 底部说明
-            item {
-                Text(
-                    text = "💡 提示：熄屏时系统默认会削减 AOD 亮度（乘以约 0.6），倍率设为 1.6 可抵消削减，使 AOD 保持正常亮度。",
-                    color = GlassTheme.TextSecondary,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-            }
+        // 底部说明
+        item {
+            Text(
+                text = "💡 提示：熄屏时系统默认会削减 AOD 亮度（乘以约 0.6），倍率设为 1.6 可抵消削减，使 AOD 保持正常亮度。",
+                color = GlassTheme.TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
