@@ -91,7 +91,8 @@ private fun MainScreen(
                 onTabSelected = { selectedTab = it },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp, horizontal = 24.dp)
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 16.dp)
             )
         }
     }
